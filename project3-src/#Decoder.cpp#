@@ -1,0 +1,152 @@
+#include <iostream>
+#include "Decoder.h"
+#include "TreeNode.h"
+#include "MinHeap.h"
+#include "HuffTree.h"
+#include <string>
+#include <fstream>
+#include <bitset>
+#include <cstring>
+#include <cstddef>
+#include <vector>
+
+using namespace std;
+
+Decoder::Decoder(string huff_file_path)
+{
+//put constructor stuff in here
+	this -> infile = huff_file_path;
+	heap = new MinHeap();
+	tree = new HuffTree();
+}
+
+//Fills up the frequency_table array where frequency_table[i] 
+//will contain the frequency of char with ASCII code i          
+void Decoder::buildFrequencyTableFromFile()
+{
+	ifstream inputfile;
+	inputfile.open(infile, ios::in | ios::binary);
+	if(inputfile.fail())
+	{
+		//cout << "Error: cannot open input file" << endl;
+		return;
+	}
+	int uniqueChars = this -> readTwoBytes(inputfile);
+	//cout << "unique characters: " << uniqueChars << endl;
+	int ch;
+	int freq;
+	for(int i = 0; i<uniqueChars; i++)
+	{
+		ch = this -> readOneByte(inputfile);
+		//cout << "character: " << (char)(ch) << endl;
+		freq = this -> readFourBytes(inputfile);
+		//cout << "frequency: " << freq << endl;
+		this -> frequency_table[ch] = freq;
+	}
+}
+
+//Builds the min head and run the encoding algorithm
+void Decoder::decode()
+{
+	this -> buildFrequencyTableFromFile();
+	for(int i = 0; i<256; i++)
+	{
+		if(frequency_table[i] != 0)
+		{
+			TreeNode * node = new TreeNode(i, frequency_table[i]);
+			heap -> insert(node);
+		}
+	}
+	tree -> buildTree(heap);
+	tree -> generateCodes();
+}
+
+//Generates the encoded file and save it as output_file_path
+void Decoder::writeUncompressedFile(string file_path)
+{
+	ofstream out_file;
+	out_file.open(file_path, ios::out | ios::binary);
+	if(out_file.fail())
+		return;
+	int uniqueCharSize = tree -> charHolder.size();
+	out_file.write((const char *)(&uniqueCharSize),2);
+	for(int i=0; i<256; i++)
+	{
+		if(frequency_table[i] != 0)
+		{
+			int freq = frequency_table[i];
+			out_file.write((const char *)(&i),1);
+			out_file.write((const char *)(&freq),4);
+		}
+	}
+	ifstream in_file;
+	in_file.open(file_path);
+	if(in_file.fail())
+		return;
+	char ch;
+	string bitCode = "";
+	while(in_file.get(ch))
+	{
+		int val = (int)(ch);
+		string charCode = tree -> getCharCode(val);
+		bitCode += charCode;
+		//cout << "bitCode = " << bitCode << endl;
+	}
+	int index = 0;
+	string str;
+	while(index < bitCode.length())
+	{
+		str = "";
+		int byte = 0;
+		while(byte < 8 && index < bitCode.length())
+		{
+			str += bitCode[index];
+			//cout << "bitCode[" <<index<<"]=" << (int)(bitCode[index])<<endl;
+			byte++;
+			index++;
+			//cout <<"index = "<< index<<endl;
+			//cout << "s = " << str<<endl;
+		}
+		int size = str.length();
+		//cout << "size = "<< size<<endl;
+		//cout << "s = " << str<<endl;
+		while(size < 8)
+		{
+			str += "0";
+			size++;
+		}
+		//cout << "s = " <<str;
+		bitset<8> bit(str);
+		unsigned long s = bit.to_ulong();
+		out_file.write((const char *)(&s),1);
+	}
+	in_file.close();
+	out_file.close();
+}
+
+Decoder::~Decoder()
+{
+	//delete heap;
+	//delete tree;
+}
+
+int Decoder::readOneByte(ifstream& file)
+{
+	unsigned char byte;
+	file.read(reinterpret_cast<char *>(&byte),1);
+	return (unsigned int)byte;
+}
+
+int Decoder::readTwoBytes(ifstream& file)
+{
+	unsigned char byte1;
+	unsigned char byte2;
+	file.read(reinterpret_cast<char *>(&byte1),1);
+	file.read(reinterpret_cast<char *>(&byte2),1);
+	return (unsigned int)(byte2 << 8 | byte1);
+}
+
+int Decoder::readFourBytes(ifstream& file)
+{
+        jff
+

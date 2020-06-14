@@ -1,0 +1,186 @@
+#include <iostream>
+#include "Encoder.h"
+#include "TreeNode.h"
+#include "MinHeap.h"
+#include "HuffTree.h"
+#include <string>
+#include <fstream>
+#include <bitset>
+
+using namespace std;
+
+ifstream inFile;
+
+Encoder::Encoder(string file_path)
+{
+//put constructor stuff in here
+	this -> infile = file_path;
+	heap = new MinHeap();
+	tree = new HuffTree();
+}
+
+//Fills up the frequency_table array where frequency_table[i] 
+//will contain the frequency of char with ASCII code i		
+void Encoder::buildFrequencyTable()
+{
+	cout<<"in bft "<<endl;
+	ifstream inputfile;
+	inputfile.open(infile);
+	if(inputfile.fail())
+		return;
+	char ch;
+	while(inputfile.get(ch))
+	{
+		unsigned char convert = ch;
+		//cout << "convert= " << (int)(convert);
+		frequency_table[convert]++;
+	}
+	inputfile.close();
+	//cout<<"end bft"<<endl;
+}
+
+//Builds the min head and run the encoding algorithm
+void Encoder::encode()
+{
+	this -> buildFrequencyTable();
+	for(int i = 0; i < 256; i++)
+	{
+		if(frequency_table[i] != 0)
+		{
+			TreeNode * node = new TreeNode(i, frequency_table[i]);
+			heap -> insert(node);
+		}
+	}
+	//cout<<"after create hufftree"<<endl;
+	tree -> buildTree(heap);
+	//cout<<"buildTree"<<endl;
+	tree -> generateCodes();
+	//cout<<"gencode"<<endl;
+}
+
+//Generates the encoded file and save it as output_file_path
+void Encoder::writeEncodedFile(string output_file_path)
+{
+  /*ofstream out_file;
+	out_file.open(output_file_path, ios::out | ios::binary);
+	if(out_file.fail())
+		return;
+	int uniqueCharSize = tree -> charHolder.size();
+	out_file.write((const char *)(&uniqueCharSize),2);
+	for(int i=0; i<256; i++)
+	{
+		if(frequency_table[i] != 0)
+		{
+			int freq = frequency_table[i];
+			out_file.write((const char *)(&i),1);
+			out_file.write((const char *)(&freq),4);
+		}
+	}
+	ifstream in_file;
+	in_file.open(infile);
+	if(in_file.fail())
+		return;
+	char ch;
+	string bitCode = "";
+	while(in_file.get(ch))
+	{
+		int val = (int)(ch);
+		string charCode = tree -> getCharCode(val);
+		bitCode += charCode;
+		cout << "bitCode = " << bitCode << endl;
+	}
+	int index = 0;
+	string str;
+	while(index < bitCode.length())
+	{
+		str = "";
+		int byte = 0;
+		while(byte < 8 && index < bitCode.length())
+		{
+			str += bitCode[index];
+			cout << "bitCode[" <<index<<"]=" << (int)(bitCode[index])<<endl;
+			byte++;
+			index++;
+			cout <<"index = "<< index<<endl;
+			cout << "s = " << str<<endl;
+		}
+		int size = str.length();
+		cout << "size = "<< size<<endl;
+		cout << "sis = " << str<<endl;
+		while(size < 8)
+		{
+			str += "0";
+			size++;
+			cout<<"check"<<endl;
+		}
+		cout << "here:  " <<str;
+		bitset<8> bit(str);
+		unsigned long s = bit.to_ulong();
+		cout<<"write"<<endl;
+		out_file.write((const char *)(&s),1);
+	}
+	in_file.close();
+	out_file.close();*/
+  ofstream fileout;
+  fileout.open(output_file_path, ios::out | ios::binary);
+  if(fileout.fail() )
+    {
+      return;
+    }
+  //header
+  int uniqueChars = tree->charHolder.size();
+  fileout.write((const char *)&uniqueChars,2);
+  for(int i = 0; i < 256; i++)
+    {
+      if(frequency_table[i] != 0){
+	int cFreq = frequency_table[i];
+	fileout.write((const char *)&i,1);
+	fileout.write((const char *)&cFreq,4);
+      }
+    }
+  //body
+  ifstream inputFile;
+  inputFile.open(infile);
+  if(inputFile.fail() )
+    return;
+  char val;
+  string code = "";
+  while(inputFile.get(val)){
+    int ascii = (int)val;
+    string c = tree->getCharCode(ascii);
+    code += c;
+  }
+  int i = 0;
+  string convert;
+  while( i <code.length()){
+    int countb = 0;
+    convert = "";
+    while(countb < 8 && i < code.length() ){
+      convert += code[i];
+      countb++;
+      i++;
+    }
+    int convertlen = convert.length();
+    while(convertlen < 8)
+      {
+	convert += "0";
+	convertlen++;
+      }
+    cout<<convert<<endl;
+    string help = "00001000";
+    bitset<8> bs(help);
+    cout<<bs<<endl;
+    unsigned long b = bs.to_ulong();
+    fileout.write((const char *)&b,1);
+  }
+  inputFile.close();
+  fileout.close();
+  
+}
+
+Encoder::~Encoder()
+{
+	//delete heap;
+	//delete tree;
+}
+
